@@ -13,11 +13,10 @@ graph.add_node("FIMCP")
 graph.add_node("FADCOM")
 graph.add_node("FCNM")
 
-graph.add_edge(graph.get_node("FIEC"), graph.get_node("FCV"), 1) 
-graph.add_edge(graph.get_node("FCV"), graph.get_node("FIMCP"), 1)
-graph.add_edge(graph.get_node("FIMCP"), graph.get_node("FADCOM"), 1)
-graph.add_edge(graph.get_node("FADCOM"), graph.get_node("FCNM"), 1)
-graph.add_edge(graph.get_node("FCNM"), graph.get_node("FIEC"), 1)
+graph.add_edge("FIEC", "FIMCP", 1)
+graph.add_edge("FIEC", "FCNM", 1)
+graph.add_edge("FIMCP", "FCV", 1)
+graph.add_edge("FCV", "FCNM", 1)
+graph.add_edge("FIMCP", "FCNM", 1)
 
-
-
+print(graph)
