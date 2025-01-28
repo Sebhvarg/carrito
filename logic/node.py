@@ -3,8 +3,6 @@ class Node:
         self.name = name
         self.edges = []
 
-    
-
     def __str__(self):
         return self.name
     
