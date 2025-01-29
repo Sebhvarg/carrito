@@ -5,7 +5,6 @@ import tkinter as tk
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ui.app import GraphApp  # Asegúrate de importar la clase correcta
-from logic.pathfinding import shortest_path
 
 # Crear la ventana de Tkinter
 root = tk.Tk()
