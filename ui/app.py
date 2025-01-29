@@ -169,28 +169,6 @@ class GraphApp:
         # Empezar la animación desde el primer segmento del camino
         draw_step(0, 0)
 
-    def find_shortest_path(self):
-        start = self.start_node_var.get()
-        end = self.end_node_var.get()
-
-        if not start or not end:
-            messagebox.showerror("Error", "Seleccione los nodos de inicio y destino.")
-            return
-
-        path = self.shortest_path(self.graph, start, end)
-        if path:
-            self.result_var.set(f"Camino más corto: {' -> '.join(path)}")
-            self.animate_shortest_path(path)  # Llamar a la función de animación
-        else:
-            self.result_var.set("No se encontró un camino.")
-
-        # Redibujar el grafo con los nuevos datos
-        self.draw_graph()
-
-    def shortest_path(self, graph, start, end):
-        # Aquí se implementa el algoritmo de camino más corto (Dijkstra, A*, etc.)
-        # Suponiendo que la función ya existe y devuelve el camino más corto
-        pass
 
     def send_route_to_arduino(self, path):
         if self.arduino:
@@ -200,4 +178,5 @@ class GraphApp:
                 self.arduino.write(data.encode())  # Enviar el nodo como comando al Arduino
                 print(f"Enviando nodo {node} al arduino")
                 time.sleep(1)  # Simula el movimiento del carro (reemplazar por comandos de movimiento reales)
-           
+                
+            print("Ruta enviada al Arduino")
