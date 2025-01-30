@@ -8,35 +8,19 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from logic.graph import Graph
 from logic.pathfinding import shortest_path
-
+import threading
 
 class GraphApp:
-    def __init__(self, master, arduino=None, flask_url="http://localhost:5000/location"):
+    def __init__(self, master, arduino=None, flask_url="http://localhost:5000/nodos"):
         self.master = master
         self.arduino = arduino
         self.graph = Graph()  # Crear el grafo
         self.flask_url = flask_url  # URL del servidor Flask
-
-        # Solicitar ubicación al servidor Flask
-        self.request_location_from_flask()
-
+        self.server_running = False  # Estado del servidor
+        self.server_ip = "http://192.168.3.12:5000/coordenadas"  # IP del servidor Flask
+        
+        # Crear widgets de la interfaz
         self.create_widgets()
-
-    def request_location_from_flask(self):
-        try:
-            response = requests.post(self.flask_url, json={"latitude": -2.180235, "longitude": -79.922418})
-            if response.status_code == 200:
-                print(f"Ubicación recibida desde Flask: {response.json()}")
-                # Aquí procesas la ubicación recibida y la agregas al grafo
-                latitude = response.json().get("latitude")
-                longitude = response.json().get("longitude")
-                node_name = f"Node_{latitude}_{longitude}"
-                self.graph.add_edge("Start", node_name, 1)  # Conectamos el nodo a "Start"
-                print(f"Agregado al grafo: {node_name} ({latitude}, {longitude})")
-            else:
-                print(f"Error al recibir la ubicación: {response.json()}")
-        except requests.exceptions.RequestException as e:
-            print(f"Error en la solicitud Flask: {e}")
 
     def create_widgets(self):
         self.start_node_var = tk.StringVar()
@@ -49,27 +33,68 @@ class GraphApp:
         ttk.Label(self.master, text="Nuevo peso de la arista:").grid(row=2, column=1, padx=10, pady=5)
         ttk.Label(self.master, textvariable=self.result_var, foreground="blue").grid(row=3, column=1, padx=10, pady=10)
 
-        nodes = list(self.graph.get_nodes())
-        self.start_dropdown = ttk.Combobox(self.master, textvariable=self.start_node_var, values=nodes, state="readonly")
-        self.start_dropdown.grid(row=0, column=2, padx=10, pady=5)
+        # Botones para iniciar/detener servidor
+        self.start_server_button = ttk.Button(self.master, text="Iniciar Servidor", command=self.start_server)
+        self.start_server_button.grid(row=4, column=0, pady=10)
 
-        self.end_dropdown = ttk.Combobox(self.master, textvariable=self.end_node_var, values=nodes, state="readonly")
-        self.end_dropdown.grid(row=1, column=2, padx=10, pady=5)
+        self.stop_server_button = ttk.Button(self.master, text="Detener Servidor", command=self.stop_server, state="disabled")
+        self.stop_server_button.grid(row=4, column=1, pady=10)
 
-        self.weight_entry = ttk.Entry(self.master, textvariable=self.weight_var)
-        self.weight_entry.grid(row=2, column=2, padx=10, pady=5)
+        # Aquí iría el resto de la interfaz de la app, como el grafo, las entradas, etc.
+        self.start_button = ttk.Button(self.master, text="Buscar Camino Más Corto", command=self.find_shortest_path)
+        self.start_button.grid(row=5, column=0, columnspan=2, pady=10)
 
-        self.update_weight_button = ttk.Button(self.master, text="Actualizar Peso", command=self.update_edge_weight)
-        self.update_weight_button.grid(row=4, column=1, columnspan=2, pady=10)
+    def start_server(self):
+        if not self.server_running:
+            self.start_flask_server()  # Usar self para llamar a la función interna
+            self.server_running = True
+            self.start_server_button.config(state="disabled")
+            self.stop_server_button.config(state="normal")
+            print("Servidor Flask iniciado.")
+        else:
+            messagebox.showinfo("Información", "El servidor ya está corriendo.")
 
-        self.find_button = ttk.Button(self.master, text="Buscar Camino Más Corto", command=self.find_shortest_path)
-        self.find_button.grid(row=5, column=1, columnspan=2, pady=10)
+    def start_flask_server(self):
+        def run_flask():
+            from flask import Flask
+            app = Flask(__name__)
 
-        self.canvas = tk.Canvas(self.master, width=500, height=500, bg="white")
-        self.canvas.grid(row=0, column=0, padx=10, pady=10, rowspan=4)
+            @app.route('/coordenadas', methods=['GET'])
+            def recibir_coordenadas():
+                lat = request.args.get('lat')
+                lon = request.args.get('lon')
 
-        self.draw_graph()
+                if lat and lon:
+                    print(f"📍 Coordenadas recibidas: Latitud = {lat}, Longitud = {lon}")
+                    nodos[cantidad] = {"latitud": lat, "longitud": lon}
+                    cantidad += 1        
+                    return {"status": "OK", "latitud": lat, "longitud": lon}, 200
+                else:
+                    return {"error": "Faltan parámetros lat y lon"}, 400
+                
+            app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
 
+        threading.Thread(target=run_flask).start()
+
+    def stop_server(self):
+        if self.server_running:
+            stop_flask_server()  # Detener el servidor (esto es solo un placeholder, necesitarás lógica extra)
+            self.server_running = False
+            self.start_server_button.config(state="normal")
+            self.stop_server_button.config(state="disabled")
+            print("Servidor Flask detenido.")
+            self.save_graph()  # Guardar el grafo cuando se detiene el servidor
+        else:
+            messagebox.showinfo("Información", "El servidor no está corriendo.")
+
+    def save_graph(self):
+        # Guardar el grafo a un archivo
+        print("Guardando el grafo...")
+        # Aquí puedes guardar el grafo, por ejemplo, como un archivo JSON
+        with open("grafo.json", "w") as file:
+            file.write(str(self.graph))  # Puedes convertir el grafo a JSON si es necesario
+        print("Grafo guardado.")
+        
     def draw_graph(self):
         self.canvas.delete("all")
         node_radius = 20
@@ -85,7 +110,7 @@ class GraphApp:
             self.canvas.create_oval(x - node_radius, y - node_radius, x + node_radius, y + node_radius, fill="lightblue")
             self.canvas.create_text(x, y, text=node.name, font=("Arial", 12, "bold"))
 
-        for edge in self.graph.edges:
+        for edge in self.graph.get_edges():  # Utiliza el método get_edges
             start = edge.source.name
             end = edge.target.name
             weight = edge.weight
@@ -119,7 +144,24 @@ class GraphApp:
             self.draw_graph()
         else:
             messagebox.showerror("Error", f"No existe una arista entre {source} y {target}.")
+    
+    def find_shortest_path(self):
+        start = self.start_node_var.get()
+        end = self.end_node_var.get()
 
+        if not start or not end:
+            messagebox.showerror("Error", "Por favor, seleccione los nodos de inicio y destino.")
+            return
+
+        path = shortest_path(self.graph, start, end)
+
+        if path is None:
+            self.result_var.set("No hay camino disponible.")
+        else:
+            self.result_var.set(" → ".join(path))
+            self.animate_shortest_path(path)
+            self.send_route_to_arduino(path)
+    
     def find_shortest_path(self):
         start = self.start_node_var.get()
         end = self.end_node_var.get()
@@ -147,3 +189,13 @@ class GraphApp:
                 self.arduino.write(f"{node}\n".encode())
                 print(f"Enviando nodo {node} al arduino")
                 time.sleep(1)
+
+    def send_coordinates_to_server(self, lat, lon):
+        try:
+            response = requests.get(self.server_ip, params={'lat': lat, 'lon': lon})
+            if response.status_code == 200:
+                print(f"📤 Coordenadas enviadas: Lat = {lat}, Lon = {lon}")
+            else:
+                print(f"❌ Error al enviar coordenadas: {response.status_code}")
+        except Exception as e:
+            print(f"❌ Error al enviar coordenadas: {e}")
