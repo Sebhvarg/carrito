@@ -1,3 +1,4 @@
+import requests  # Asegúrate de tener esta librería instalada con 'pip install requests'
 import math
 import os
 import sys
@@ -10,19 +11,32 @@ from logic.pathfinding import shortest_path
 
 
 class GraphApp:
-    def __init__(self, master, arduino=None):
+    def __init__(self, master, arduino=None, flask_url="http://localhost:5000/location"):
         self.master = master
         self.arduino = arduino
         self.graph = Graph()  # Crear el grafo
+        self.flask_url = flask_url  # URL del servidor Flask
 
-        # Agregar nodos y aristas iniciales
-        self.graph.add_edge("FIEC", "FCNM", 5)
-        self.graph.add_edge("FCNM", "FICT", 1)
-        self.graph.add_edge("FIEC", "FICT", 7)
-        self.graph.add_edge("FCNM", "FADCOM", 1)
-        self.graph.add_edge("ADMISION", "ADMISION", 0)
+        # Solicitar ubicación al servidor Flask
+        self.request_location_from_flask()
 
         self.create_widgets()
+
+    def request_location_from_flask(self):
+        try:
+            response = requests.post(self.flask_url, json={"latitude": -2.180235, "longitude": -79.922418})
+            if response.status_code == 200:
+                print(f"Ubicación recibida desde Flask: {response.json()}")
+                # Aquí procesas la ubicación recibida y la agregas al grafo
+                latitude = response.json().get("latitude")
+                longitude = response.json().get("longitude")
+                node_name = f"Node_{latitude}_{longitude}"
+                self.graph.add_edge("Start", node_name, 1)  # Conectamos el nodo a "Start"
+                print(f"Agregado al grafo: {node_name} ({latitude}, {longitude})")
+            else:
+                print(f"Error al recibir la ubicación: {response.json()}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error en la solicitud Flask: {e}")
 
     def create_widgets(self):
         self.start_node_var = tk.StringVar()
