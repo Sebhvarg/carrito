@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Grafo</title>
+</head>
+<body>
+    <h1>Crear Grafo en movimiento</h1>
+    <p id="status">Esperando ubicación...</p>
+    <p id="distancia">Distancia recorrida: 0 cm</p>
+
+    <script>
+        let ultimaLat = null, ultimaLon = null;
+        let distanciaTotal = 0;
+        const umbral = 5; // Umbral de 5 cm para detectar movimiento
+        const tiempoMinimoMovimiento = 2000; // 2 segundos entre verificaciones
+
+        let tiempoUltimaVerificacion = 0;
+
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // Radio de la Tierra en metros
+            const rad = Math.PI / 180;
+
+            const dLat = (lat2 - lat1) * rad;
+            const dLon = (lon2 - lon1) * rad;
+
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            const distanciaMetros = R * c; // Resultado en metros
+            return distanciaMetros * 100; // Convertimos a centímetros
+        }
+
+        function iniciarSeguimiento() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.watchPosition(
+                    function (position) {
+                        let lat = position.coords.latitude;
+                        let lon = position.coords.longitude;
+                        let accuracy = position.coords.accuracy;
+
+                        if (accuracy > 100) {
+                            console.warn("⚠️ Ubicación poco precisa, ignorada.");
+                            return;
+                        }
+
+                        document.getElementById("status").innerText = `📍 Ubicación: ${lat}, ${lon} (±${accuracy.toFixed(1)}m)`;
+
+                        // Verifica si ha pasado el tiempo mínimo antes de comprobar el movimiento
+                        let ahora = new Date().getTime();
+                        if (ahora - tiempoUltimaVerificacion >= tiempoMinimoMovimiento) {
+                            if (ultimaLat !== null && ultimaLon !== null) {
+                                let distanciaCM = calcularDistancia(ultimaLat, ultimaLon, lat, lon);
+
+                                // Si la distancia recorrida es mayor que el umbral, está en movimiento
+                                if (distanciaCM > umbral) {
+                                    console.log("🚶‍♂️ El teléfono está en movimiento.");
+                                    document.getElementById("status").innerText = `📍 El teléfono se está moviendo: ${lat}, ${lon} (±${accuracy.toFixed(1)}m)`;
+                                } else {
+                                    console.log("🛑 El teléfono está detenido.");
+                                    document.getElementById("status").innerText = `🛑 El teléfono está detenido: ${lat}, ${lon} (±${accuracy.toFixed(1)}m)`;
+                                }
+
+                                // Solo actualizamos la distancia si la distancia recorrida es mayor que el umbral
+                                distanciaTotal += distanciaCM;
+                                document.getElementById("distancia").innerText = `Distancia recorrida: ${distanciaTotal.toFixed(2)} cm`;
+                            }
+
+                            // Actualiza las últimas coordenadas y la hora de la última verificación
+                            ultimaLat = lat;
+                            ultimaLon = lon;
+                            tiempoUltimaVerificacion = ahora;
+                        }
+                    },
+                    function (error) {
+                        console.error("❌ Error de geolocalización:", error.message);
+                        document.getElementById("status").innerText = "❌ No se pudo obtener la ubicación.";
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                alert("❌ Tu navegador no soporta geolocalización.");
+            }
+        }
+
+        function enviarDatos() {
+            if (ultimaLat !== null && ultimaLon !== null) {
+                fetch(`http://192.168.3.13:5000/coordenadas?lat=${ultimaLat}&lon=${ultimaLon}`)
+                    .then(response => response.json())
+                    .then(data => console.log("📩 Respuesta del servidor:", data))
+                    .catch(error => console.error("❌ Error al enviar datos:", error));
+            }
+        }
+
+        iniciarSeguimiento(); // Iniciar la ubicación en tiempo real automáticamente
+        setInterval(enviarDatos, 3000);
+    </script>
+</body>
+</html>

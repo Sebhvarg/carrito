@@ -1,16 +1,21 @@
+# archivo: main.py
+
 import sys
 import os
 import tkinter as tk
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Asegúrate de que el directorio 'ui' está en el path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "ui")))
 
-from ui.app import GraphApp  # Asegúrate de importar la clase correcta
+from app import GraphApp
+from app_gui import GraphAppGUI  # Importar la clase GraphAppGUI
 
-# Crear la ventana de Tkinter
-root = tk.Tk()
-root.title("Test de GraphApp")
-# Instanciar la aplicación
-app = GraphApp(root)
+def main():
+    root = tk.Tk()
+    archivo = 'coordenadas.txt'  # Nombre del archivo con las coordenadas
+    app = GraphApp(archivo)
+    gui = GraphAppGUI(root, app)
+    root.mainloop()
 
-# Iniciar el bucle de eventos de Tkinter
-root.mainloop()
+if __name__ == "__main__":
+    main()

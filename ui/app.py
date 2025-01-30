@@ -1,149 +1,62 @@
-import requests  # Asegúrate de tener esta librería instalada con 'pip install requests'
-import math
-import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
-import time
-import tkinter as tk
-from tkinter import ttk, messagebox
-from logic.graph import Graph
-from logic.pathfinding import shortest_path
+# archivo: ui/app.py
 
+import networkx as nx
+from geopy.distance import geodesic
+import matplotlib.pyplot as plt
 
 class GraphApp:
-    def __init__(self, master, arduino=None, flask_url="http://localhost:5000/location"):
-        self.master = master
-        self.arduino = arduino
-        self.graph = Graph()  # Crear el grafo
-        self.flask_url = flask_url  # URL del servidor Flask
+    def __init__(self, archivo):
+        # Cargar coordenadas desde el archivo
+        self.coordenadas = self.cargar_coordenadas(archivo)
+        # Crear el grafo
+        self.G = self.crear_grafo()
 
-        # Solicitar ubicación al servidor Flask
-        self.request_location_from_flask()
-
-        self.create_widgets()
-
-    def request_location_from_flask(self):
+    def cargar_coordenadas(self, archivo):
+        coordenadas = []
         try:
-            response = requests.post(self.flask_url, json={"latitude": -2.180235, "longitude": -79.922418})
-            if response.status_code == 200:
-                print(f"Ubicación recibida desde Flask: {response.json()}")
-                # Aquí procesas la ubicación recibida y la agregas al grafo
-                latitude = response.json().get("latitude")
-                longitude = response.json().get("longitude")
-                node_name = f"Node_{latitude}_{longitude}"
-                self.graph.add_edge("Start", node_name, 1)  # Conectamos el nodo a "Start"
-                print(f"Agregado al grafo: {node_name} ({latitude}, {longitude})")
-            else:
-                print(f"Error al recibir la ubicación: {response.json()}")
-        except requests.exceptions.RequestException as e:
-            print(f"Error en la solicitud Flask: {e}")
+            with open(archivo, 'r') as f:
+                for linea in f:
+                    lat, lon = map(float, linea.strip().split(','))
+                    coordenadas.append((lat, lon))
+        except Exception as e:
+            print(f"Error al leer el archivo: {e}")
+        return coordenadas
 
-    def create_widgets(self):
-        self.start_node_var = tk.StringVar()
-        self.end_node_var = tk.StringVar()
-        self.weight_var = tk.StringVar()
-        self.result_var = tk.StringVar()
+    def crear_grafo(self):
+        G = nx.Graph()
+        for idx, coord in enumerate(self.coordenadas):
+            G.add_node(idx, lat=coord[0], lon=coord[1])
 
-        ttk.Label(self.master, text="Seleccione el lugar de inicio:").grid(row=0, column=1, padx=10, pady=5)
-        ttk.Label(self.master, text="Seleccione el lugar de destino:").grid(row=1, column=1, padx=10, pady=5)
-        ttk.Label(self.master, text="Nuevo peso de la arista:").grid(row=2, column=1, padx=10, pady=5)
-        ttk.Label(self.master, textvariable=self.result_var, foreground="blue").grid(row=3, column=1, padx=10, pady=10)
+        for i in range(len(self.coordenadas) - 1):
+            coord1, coord2 = self.coordenadas[i], self.coordenadas[i + 1]
+            distancia = geodesic(coord1, coord2).meters
+            ponderacion = 1 if distancia < 1 else 2
+            G.add_edge(i, i + 1, weight=distancia, ponderacion=ponderacion)
 
-        nodes = list(self.graph.get_nodes())
-        self.start_dropdown = ttk.Combobox(self.master, textvariable=self.start_node_var, values=nodes, state="readonly")
-        self.start_dropdown.grid(row=0, column=2, padx=10, pady=5)
+        coord1, coord2 = self.coordenadas[-1], self.coordenadas[0]
+        distancia = geodesic(coord1, coord2).meters
+        ponderacion = 1 if distancia < 1 else 2
+        G.add_edge(len(self.coordenadas) - 1, 0, weight=distancia, ponderacion=ponderacion)
 
-        self.end_dropdown = ttk.Combobox(self.master, textvariable=self.end_node_var, values=nodes, state="readonly")
-        self.end_dropdown.grid(row=1, column=2, padx=10, pady=5)
+        return G
 
-        self.weight_entry = ttk.Entry(self.master, textvariable=self.weight_var)
-        self.weight_entry.grid(row=2, column=2, padx=10, pady=5)
-
-        self.update_weight_button = ttk.Button(self.master, text="Actualizar Peso", command=self.update_edge_weight)
-        self.update_weight_button.grid(row=4, column=1, columnspan=2, pady=10)
-
-        self.find_button = ttk.Button(self.master, text="Buscar Camino Más Corto", command=self.find_shortest_path)
-        self.find_button.grid(row=5, column=1, columnspan=2, pady=10)
-
-        self.canvas = tk.Canvas(self.master, width=500, height=500, bg="white")
-        self.canvas.grid(row=0, column=0, padx=10, pady=10, rowspan=4)
-
-        self.draw_graph()
-
-    def draw_graph(self):
-        self.canvas.delete("all")
-        node_radius = 20
-        node_positions = {}
-
-        width, height = 400, 400
-        angle_gap = 360 / len(self.graph.get_nodes()) if self.graph.get_nodes() else 0
-        for i, node in enumerate(self.graph.get_nodes()):
-            angle = i * angle_gap
-            x = width // 2 + 150 * math.cos(math.radians(angle))
-            y = height // 2 + 150 * math.sin(math.radians(angle))
-            node_positions[node.name] = (x, y)
-            self.canvas.create_oval(x - node_radius, y - node_radius, x + node_radius, y + node_radius, fill="lightblue")
-            self.canvas.create_text(x, y, text=node.name, font=("Arial", 12, "bold"))
-
-        for edge in self.graph.edges:
-            start = edge.source.name
-            end = edge.target.name
-            weight = edge.weight
-            start_x, start_y = node_positions[start]
-            end_x, end_y = node_positions[end]
-            self.canvas.create_line(start_x, start_y, end_x, end_y, width=2, fill="black")
-            midpoint_x = (start_x + end_x) / 2
-            midpoint_y = (start_y + end_y) / 2
-            self.canvas.create_rectangle(midpoint_x - 15, midpoint_y - 10, midpoint_x + 15, midpoint_y + 10, fill="yellow", outline="black")
-            self.canvas.create_text(midpoint_x, midpoint_y, text=str(weight), font=("Arial", 14, "bold"), fill="black")
-
-    def update_edge_weight(self):
-        source = self.start_node_var.get()
-        target = self.end_node_var.get()
-        new_weight = self.weight_var.get()
-
-        if not source or not target or not new_weight:
-            messagebox.showerror("Error", "Por favor, seleccione los nodos y proporcione un peso.")
-            return
-
+    def obtener_camino_mas_corto(self, nodo_inicio, nodo_destino):
         try:
-            new_weight = int(new_weight)
-        except ValueError:
-            messagebox.showerror("Error", "El peso debe ser un número entero.")
-            return
+            camino_mas_corto = nx.shortest_path(self.G, source=nodo_inicio, target=nodo_destino, weight='weight')
+            distancia_total = nx.shortest_path_length(self.G, source=nodo_inicio, target=nodo_destino, weight='weight')
+            return camino_mas_corto, distancia_total
+        except nx.NetworkXNoPath:
+            return None, None
 
-        edge = self.graph.get_edge(source, target)
-        if edge:
-            edge.weight = new_weight
-            self.graph.get_edge(target, source).weight = new_weight
-            self.draw_graph()
-        else:
-            messagebox.showerror("Error", f"No existe una arista entre {source} y {target}.")
+    def visualizar_grafo(self, camino_mas_corto=None):
+        pos = {i: (self.G.nodes[i]['lon'], self.G.nodes[i]['lat']) for i in self.G.nodes}
 
-    def find_shortest_path(self):
-        start = self.start_node_var.get()
-        end = self.end_node_var.get()
+        plt.figure(figsize=(8, 6))
+        nx.draw(self.G, pos, with_labels=True, node_size=500, node_color='lightblue', font_size=10)
 
-        if not start or not end:
-            messagebox.showerror("Error", "Por favor, seleccione los nodos de inicio y destino.")
-            return
+        if camino_mas_corto:
+            edge_list = list(zip(camino_mas_corto, camino_mas_corto[1:]))
+            nx.draw_networkx_edges(self.G, pos, edgelist=edge_list, edge_color='red', width=2)
 
-        path = shortest_path(self.graph, start, end)
-
-        if path is None:
-            self.result_var.set("No hay camino disponible.")
-        else:
-            self.result_var.set(" → ".join(path))
-            self.animate_shortest_path(path)
-            self.send_route_to_arduino(path)
-
-    def animate_shortest_path(self, path):
-        print(f"Animando ruta: {' → '.join(path)}")
-        # Aquí puedes agregar lógica para visualizar el camino
-
-    def send_route_to_arduino(self, path):
-        if self.arduino:
-            for node in path:
-                self.arduino.write(f"{node}\n".encode())
-                print(f"Enviando nodo {node} al arduino")
-                time.sleep(1)
+        plt.title("Ruta más corta con Dijkstra")
+        plt.show()
