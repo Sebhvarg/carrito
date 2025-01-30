@@ -4,6 +4,8 @@
 import sys
 import os
 import tkinter as tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 
 # Asegúrate de que el directorio 'ui' está en el path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
@@ -68,3 +70,11 @@ class GraphApp:
 
         plt.title("Ruta más corta con Dijkstra")
         plt.show()
+
+    def dibujar_grafo(self, ax):
+        ax.clear()  # Limpia el gráfico antes de dibujar
+        pos = {i: (self.G.nodes[i]['lon'], self.G.nodes[i]['lat']) for i in self.G.nodes}
+
+        nx.draw(self.G, pos, with_labels=True, node_size=500, node_color='lightblue', font_size=10, ax=ax)
+    
+        ax.set_title("Grafo de Coordenadas")  # Usar 'ax.set_title()' en vez de 'plt.axes.set_title()'

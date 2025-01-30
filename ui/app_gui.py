@@ -3,11 +3,14 @@ import sys
 import os
 import tkinter as tk
 
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+
 # Asegúrate de que el directorio 'ui' está en el path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 import tkinter as tk
 from tkinter import messagebox
-from ui.app import GraphApp  # Asegúrate de importar la clase correctamente
 
 class GraphAppGUI:
     def __init__(self, master, app):
@@ -39,6 +42,10 @@ class GraphAppGUI:
         self.calcular_btn = tk.Button(master, text="Calcular Camino Más Corto", command=self.calcular_camino)
         self.calcular_btn.grid(row=2, column=0, columnspan=2)
 
+        # Botón para mostrar el grafo
+        self.mostrar_grafo_btn = tk.Button(master, text="Mostrar Grafo", command=self.mostrar_grafo)
+        self.mostrar_grafo_btn.grid(row=3, column=0, columnspan=2)
+
     def calcular_camino(self):
         try:
             nodo_inicio = int(self.nodo_inicio_var.get())
@@ -53,3 +60,18 @@ class GraphAppGUI:
                 messagebox.showerror("Error", "No existe un camino entre los nodos seleccionados.")
         except ValueError:
             messagebox.showerror("Error", "Por favor, selecciona nodos válidos.")
+
+    def mostrar_grafo(self):
+        fig, ax = plt.subplots(figsize=(5, 5))
+        ax.set_title("Visualización del Grafo")
+
+        # Aquí dibujas el grafo usando los datos de tu aplicación
+        self.app.dibujar_grafo(ax)  # Esto debe ser implementado en tu clase GraphApp
+
+        # Mostrar el gráfico en la interfaz Tkinter
+        canvas = FigureCanvasTkAgg(fig, master=self.master)
+        canvas.draw()
+        canvas.get_tk_widget().grid(row=4, column=0, columnspan=2)
+
+        # Actualizar el layout para que el botón y el grafo se ajusten en la pantalla
+        self.master.update()

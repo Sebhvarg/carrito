@@ -5,7 +5,7 @@ import os
 import tkinter as tk
 
 # Asegúrate de que el directorio 'ui' está en el path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "ui")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ui")))
 
 from app import GraphApp  # Importar la clase GraphApp
 from app_gui import GraphAppGUI  # Importar la clase GraphAppGUI
