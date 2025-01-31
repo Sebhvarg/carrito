@@ -1,6 +1,6 @@
 # archivo: ui/app.py
 # archivo: main.py
-
+import math
 import sys
 import os
 import tkinter as tk
@@ -40,12 +40,13 @@ class GraphApp:
         for i in range(len(self.coordenadas) - 1):
             coord1, coord2 = self.coordenadas[i], self.coordenadas[i + 1]
             distancia = geodesic(coord1, coord2).meters
-            ponderacion = 1 if distancia < 1 else 2
+            ponderacion = math.ceil(distancia)  # Redondear hacia arriba
             G.add_edge(i, i + 1, weight=distancia, ponderacion=ponderacion)
 
+        # Conectar el último nodo con el primero (si es un grafo cíclico)
         coord1, coord2 = self.coordenadas[-1], self.coordenadas[0]
         distancia = geodesic(coord1, coord2).meters
-        ponderacion = 1 if distancia < 1 else 2
+        ponderacion = math.ceil(distancia)  # Redondear hacia arriba
         G.add_edge(len(self.coordenadas) - 1, 0, weight=distancia, ponderacion=ponderacion)
 
         return G
@@ -72,9 +73,16 @@ class GraphApp:
         plt.show()
 
     def dibujar_grafo(self, ax):
-        ax.clear()  # Limpia el gráfico antes de dibujar
+        ax.clear()  # Limpiar el gráfico antes de dibujar
         pos = {i: (self.G.nodes[i]['lon'], self.G.nodes[i]['lat']) for i in self.G.nodes}
 
+        # Dibujar los nodos y las aristas
         nx.draw(self.G, pos, with_labels=True, node_size=500, node_color='lightblue', font_size=10, ax=ax)
-    
-        ax.set_title("Grafo de Coordenadas")  # Usar 'ax.set_title()' en vez de 'plt.axes.set_title()'
+
+        # Obtener los pesos de las aristas
+        edge_labels = {(u, v): f"{d['ponderacion']}" for u, v, d in self.G.edges(data=True)}
+
+        # Dibujar los pesos de las aristas
+        nx.draw_networkx_edge_labels(self.G, pos, edge_labels=edge_labels, font_size=10, ax=ax)
+
+        ax.set_title("Grafo con ponderaciones")

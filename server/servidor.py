@@ -13,13 +13,18 @@ def recibir_coordenadas():
     if lat and lon:
         print(f"📍 Coordenadas recibidas: Latitud = {lat}, Longitud = {lon} \n")
 
-        # Guardar coordenadas en un archivo de texto
-        with open(FILE_PATH, "w") as file:
-            file.write(f"{lat},{lon}\n")
+        try:
+            with open(FILE_PATH, "a") as file:
+                file.write(f"{lat},{lon}\n")
+            print("✅ Coordenadas guardadas correctamente")
+        except Exception as e:
+            print(f"❌ Error al escribir en el archivo: {e}")
+            return {"error": "No se pudo escribir en el archivo"}, 500
 
         return {"status": "OK", "latitud": lat, "longitud": lon}, 200
     else:
         return {"error": "Faltan parámetros lat y lon"}, 400
 
-if __name__ == '_main_':
-    app.run(host='192.168.3.12',port=5000)
+
+if __name__ == '__main__':
+    app.run(host='192.168.167.126', port=5000)

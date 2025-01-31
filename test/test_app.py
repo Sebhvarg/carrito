@@ -12,7 +12,7 @@ from app_gui import GraphAppGUI  # Importar la clase GraphAppGUI
 
 def main():
     root = tk.Tk()
-    archivo = 'coordenadas.txt'  # Nombre del archivo con las coordenadas
+    archivo = 'C:\\Users\\Lenovo\\Desktop\\carrito\\server\\coordenadas.txt'
     app = GraphApp(archivo)
     gui = GraphAppGUI(root, app)
     root.mainloop()
